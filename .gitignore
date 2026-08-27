@@ -1,0 +1,19 @@
+# Firmware build artifacts
+firmware/src/*.o
+firmware/*.elf
+firmware/*.bin
+firmware/*.map
+
+# KiCad backups/locks
+hardware/*.bak
+hardware/*-backups/
+hardware/_autosave-*
+hardware/fp-info-cache
+*.kicad_prl
+
+# Python
+__pycache__/
+*.pyc
+
+# OS junk
+.DS_Store
