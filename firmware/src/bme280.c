@@ -82,3 +82,69 @@ uint8_t bme280_init(void) {
 
     return 1;
 }
+
+/* --- Bosch reference compensation formulas (integer fixed-point) --- */
+
+static int32_t compensate_temperature(int32_t adc_T) {
+    int32_t var1, var2, T;
+    var1 = ((((adc_T >> 3) - ((int32_t)calib.dig_T1 << 1))) * ((int32_t)calib.dig_T2)) >> 11;
+    var2 = (((((adc_T >> 4) - ((int32_t)calib.dig_T1)) * ((adc_T >> 4) - ((int32_t)calib.dig_T1))) >> 12)
+            * ((int32_t)calib.dig_T3)) >> 14;
+    t_fine = var1 + var2;
+    T = (t_fine * 5 + 128) >> 8; /* result in 0.01 C */
+    return T;
+}
+
+static uint32_t compensate_pressure(int32_t adc_P) {
+    int64_t var1, var2, p;
+    var1 = ((int64_t)t_fine) - 128000;
+    var2 = var1 * var1 * (int64_t)calib.dig_P6;
+    var2 = var2 + ((var1 * (int64_t)calib.dig_P5) << 17);
+    var2 = var2 + (((int64_t)calib.dig_P4) << 35);
+    var1 = ((var1 * var1 * (int64_t)calib.dig_P3) >> 8) + ((var1 * (int64_t)calib.dig_P2) << 12);
+    var1 = (((((int64_t)1) << 47) + var1)) * ((int64_t)calib.dig_P1) >> 33;
+    if (var1 == 0) {
+        return 0; /* avoid divide-by-zero */
+    }
+    p = 1048576 - adc_P;
+    p = (((p << 31) - var2) * 3125) / var1;
+    var1 = (((int64_t)calib.dig_P9) * (p >> 13) * (p >> 13)) >> 25;
+    var2 = (((int64_t)calib.dig_P8) * p) >> 19;
+    p = ((p + var1 + var2) >> 8) + (((int64_t)calib.dig_P7) << 4);
+    return (uint32_t)(p >> 8); /* Q24.8 fixed-point Pa */
+}
+
+static uint32_t compensate_humidity(int32_t adc_H) {
+    int32_t v_x1;
+    v_x1 = (t_fine - (int32_t)76800);
+    v_x1 = (((((adc_H << 14) - (((int32_t)calib.dig_H4) << 20) - (((int32_t)calib.dig_H5) * v_x1))
+             + (int32_t)16384) >> 15)
+            * (((((((v_x1 * (int32_t)calib.dig_H6) >> 10)
+                   * (((v_x1 * (int32_t)calib.dig_H3) >> 11) + (int32_t)32768)) >> 10)
+                 + (int32_t)2097152) * (int32_t)calib.dig_H2 + 8192) >> 14));
+    v_x1 = (v_x1 - (((((v_x1 >> 15) * (v_x1 >> 15)) >> 7) * (int32_t)calib.dig_H1) >> 4));
+    v_x1 = (v_x1 < 0) ? 0 : v_x1;
+    v_x1 = (v_x1 > 419430400) ? 419430400 : v_x1;
+    return (uint32_t)(v_x1 >> 12); /* Q22.10 fixed-point %RH */
+}
+
+void bme280_read(bme280_reading_t *out) {
+    uint8_t raw[8];
+
+    /* re-trigger a forced-mode conversion */
+    i2c1_write_reg(BME280_I2C_ADDR, REG_CTRL_MEAS, 0x25);
+
+    /* naive fixed delay loop instead of polling the status register --
+       fine for x1 oversampling (~10ms max conversion time) */
+    for (volatile uint32_t i = 0; i < 200000; i++) { }
+
+    i2c1_read_regs(BME280_I2C_ADDR, REG_PRESS_MSB, raw, 8);
+
+    int32_t adc_P = (int32_t)((raw[0] << 12) | (raw[1] << 4) | (raw[2] >> 4));
+    int32_t adc_T = (int32_t)((raw[3] << 12) | (raw[4] << 4) | (raw[5] >> 4));
+    int32_t adc_H = (int32_t)((raw[6] << 8) | raw[7]);
+
+    out->temperature_centi_c = compensate_temperature(adc_T);
+    out->pressure_pa_q24_8 = compensate_pressure(adc_P);
+    out->humidity_q22_10 = compensate_humidity(adc_H);
+}
