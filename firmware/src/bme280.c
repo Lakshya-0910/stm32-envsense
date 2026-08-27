@@ -64,3 +64,21 @@ static void read_calibration(void) {
     calib.dig_H5 = (int16_t)((b2[5] << 4) | (b2[4] >> 4));
     calib.dig_H6 = (int8_t)b2[6];
 }
+
+uint8_t bme280_init(void) {
+    uint8_t id = i2c1_read_reg(BME280_I2C_ADDR, REG_CHIP_ID);
+    if (id != CHIP_ID_EXPECTED) {
+        return 0;
+    }
+
+    read_calibration();
+
+    /* humidity oversampling x1 (must be written before ctrl_meas) */
+    i2c1_write_reg(BME280_I2C_ADDR, REG_CTRL_HUM, 0x01);
+    /* temp x1, pressure x1, forced mode (sleeps between reads, low power) */
+    i2c1_write_reg(BME280_I2C_ADDR, REG_CTRL_MEAS, 0x25);
+    /* standby/filter defaults are fine for this use case */
+    i2c1_write_reg(BME280_I2C_ADDR, REG_CONFIG, 0x00);
+
+    return 1;
+}
