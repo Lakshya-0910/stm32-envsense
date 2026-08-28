@@ -43,3 +43,60 @@ static void delay_ms(uint32_t ms) {
         for (volatile uint32_t j = 0; j < 9000; j++) { }
     }
 }
+
+int main(void) {
+    clock_init_72mhz();
+    uart1_init(115200);
+    i2c1_init();
+
+    uart1_write_str("EnvSense STM32F103 + BME280 booting...\r\n");
+
+    if (!bme280_init()) {
+        uart1_write_str("ERROR: BME280 not found on I2C bus. Check wiring.\r\n");
+        while (1) { }
+    }
+
+    uart1_write_str("millis,temp_c,pressure_hpa,humidity_pct\r\n");
+
+    uint32_t millis = 0;
+    while (1) {
+        bme280_reading_t r;
+        bme280_read(&r);
+
+        uart1_write_int((int32_t)millis);
+        uart1_write_char(',');
+
+        /* temperature: centi-C -> "XX.XX" */
+        uart1_write_int(r.temperature_centi_c / 100);
+        uart1_write_char('.');
+        int32_t t_frac = r.temperature_centi_c % 100;
+        if (t_frac < 0) t_frac = -t_frac;
+        if (t_frac < 10) uart1_write_char('0');
+        uart1_write_int(t_frac);
+        uart1_write_char(',');
+
+        /* pressure: Q24.8 Pa -> hPa with 2 decimal places */
+        uint32_t pa = r.pressure_pa_q24_8 >> 8;
+        uint32_t pa_frac = ((r.pressure_pa_q24_8 & 0xFF) * 100) / 256;
+        uart1_write_int((int32_t)(pa / 100));
+        uart1_write_char('.');
+        uint32_t hpa_frac = ((pa % 100) * 100 + pa_frac) / 100;
+        if (hpa_frac < 10) uart1_write_char('0');
+        uart1_write_int((int32_t)hpa_frac);
+        uart1_write_char(',');
+
+        /* humidity: Q22.10 %RH -> "XX.XX" */
+        uint32_t h_whole = r.humidity_q22_10 >> 10;
+        uint32_t h_frac = ((r.humidity_q22_10 & 0x3FF) * 100) / 1024;
+        uart1_write_int((int32_t)h_whole);
+        uart1_write_char('.');
+        if (h_frac < 10) uart1_write_char('0');
+        uart1_write_int((int32_t)h_frac);
+
+        uart1_write_str("\r\n");
+
+        delay_ms(1000);
+        millis += 1000;
+        (void)ms_ticks;
+    }
+}
