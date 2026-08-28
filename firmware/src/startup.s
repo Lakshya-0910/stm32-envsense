@@ -32,3 +32,39 @@ g_pfnVectors:
     .section .text.Reset_Handler
     .weak Reset_Handler
     .type Reset_Handler, %function
+Reset_Handler:
+    ldr r0, =_estack
+    mov sp, r0
+
+    /* copy .data section from flash to RAM */
+    ldr r0, =_sidata
+    ldr r1, =_sdata
+    ldr r2, =_edata
+copy_loop:
+    cmp r1, r2
+    bcs copy_done
+    ldr r3, [r0], #4
+    str r3, [r1], #4
+    b copy_loop
+copy_done:
+
+    /* zero .bss section */
+    ldr r0, =_sbss
+    ldr r1, =_ebss
+    movs r2, #0
+zero_loop:
+    cmp r0, r1
+    bcs zero_done
+    str r2, [r0], #4
+    b zero_loop
+zero_done:
+
+    bl main
+    b .
+
+    .section .text.Default_Handler
+    .type Default_Handler, %function
+Default_Handler:
+    b .
+
+    .size Default_Handler, . - Default_Handler
