@@ -36,3 +36,61 @@ void i2c1_init(void) {
 
     I2C1->CR1 |= I2C_CR1_PE;
 }
+
+static void i2c1_start(void) {
+    I2C1->CR1 |= I2C_CR1_ACK;
+    I2C1->CR1 |= I2C_CR1_START;
+    i2c1_wait(&I2C1->SR1, I2C_SR1_SB);
+}
+
+static void i2c1_stop(void) {
+    I2C1->CR1 |= I2C_CR1_STOP;
+}
+
+static void i2c1_send_addr(uint8_t addr7, uint8_t read) {
+    I2C1->DR = (addr7 << 1) | (read ? 1 : 0);
+    i2c1_wait(&I2C1->SR1, I2C_SR1_ADDR);
+    (void)I2C1->SR1;
+    (void)I2C1->SR2; /* clear ADDR by reading SR1 then SR2 */
+}
+
+void i2c1_write_reg(uint8_t dev_addr, uint8_t reg_addr, uint8_t value) {
+    i2c1_start();
+    i2c1_send_addr(dev_addr, 0);
+    i2c1_wait(&I2C1->SR1, I2C_SR1_TXE);
+    I2C1->DR = reg_addr;
+    i2c1_wait(&I2C1->SR1, I2C_SR1_TXE);
+    I2C1->DR = value;
+    i2c1_wait(&I2C1->SR1, I2C_SR1_BTF);
+    i2c1_stop();
+}
+
+uint8_t i2c1_read_reg(uint8_t dev_addr, uint8_t reg_addr) {
+    uint8_t val;
+    i2c1_read_regs(dev_addr, reg_addr, &val, 1);
+    return val;
+}
+
+void i2c1_read_regs(uint8_t dev_addr, uint8_t reg_addr, uint8_t *buf, uint16_t len) {
+    /* write register pointer first */
+    i2c1_start();
+    i2c1_send_addr(dev_addr, 0);
+    i2c1_wait(&I2C1->SR1, I2C_SR1_TXE);
+    I2C1->DR = reg_addr;
+    i2c1_wait(&I2C1->SR1, I2C_SR1_BTF);
+
+    /* repeated start, then read `len` bytes */
+    i2c1_start();
+    i2c1_send_addr(dev_addr, 1);
+
+    for (uint16_t i = 0; i < len; i++) {
+        if (i == len - 1) {
+            I2C1->CR1 &= ~I2C_CR1_ACK; /* NACK the last byte */
+        } else {
+            I2C1->CR1 |= I2C_CR1_ACK;
+        }
+        i2c1_wait(&I2C1->SR1, I2C_SR1_RXNE);
+        buf[i] = (uint8_t)I2C1->DR;
+    }
+    i2c1_stop();
+}
