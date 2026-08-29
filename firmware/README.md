@@ -67,3 +67,17 @@ wiring), or just pipe it straight into the logger:
 ```bash
 python3 ../scripts/serial_logger.py --port /dev/ttyUSB0 --baud 115200 --out ../data/live_log.csv
 ```
+
+
+## Design notes / things kept intentionally simple for a first project
+
+- **Polling, not interrupts.** I2C and UART are both polled with timeout
+  loops rather than using interrupts or DMA. This is easier to reason
+  about for a first project; a natural "v2" improvement is to move UART
+  TX to DMA and add a proper SysTick-based millis() instead of a
+  busy-wait `delay_ms()`.
+- **Forced mode, not normal mode, on the BME280.** The sensor sleeps
+  between reads, which is lower power and simpler to reason about than
+  continuous conversion.
+- **Fixed-point math throughout**, per Bosch's published compensation
+  formulas — no floating point unit is used, appropriate for a Cortex-M3.
