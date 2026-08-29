@@ -23,3 +23,47 @@ firmware/
 ├── linker.ld              memory layout (64KB flash / 20KB RAM)
 └── Makefile
 ```
+## Build
+
+Requires the `arm-none-eabi-gcc` toolchain.
+
+```bash
+# Ubuntu/Debian
+sudo apt-get install gcc-arm-none-eabi
+
+# macOS
+brew install --cask gcc-arm-embedded
+
+cd firmware
+make
+```
+
+This produces `envsense.elf` and `envsense.bin`. On this build the image
+is ~3.3KB — comfortably inside the STM32F103C8T6's 64KB flash.
+
+## Flash
+
+With an ST-Link V2 (clone or genuine) connected to the SWD header (see
+`hardware/connection_table.md` for pinout):
+
+```bash
+# using st-flash (from the stlink-tools package)
+st-flash write envsense.bin 0x08000000
+
+# or using OpenOCD
+openocd -f interface/stlink.cfg -f target/stm32f1x.cfg \
+  -c "program envsense.bin 0x08000000 verify reset exit"
+```
+
+No ST-Link yet? A cheap clone (~$3-8) is worth buying — you'll reuse it
+for every STM32 project after this one.
+
+## Watch the output
+
+Open a serial terminal at 115200 8N1 on whatever port your USB-UART
+adapter enumerates as (see `hardware/connection_table.md` for TX/RX
+wiring), or just pipe it straight into the logger:
+
+```bash
+python3 ../scripts/serial_logger.py --port /dev/ttyUSB0 --baud 115200 --out ../data/live_log.csv
+```
