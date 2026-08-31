@@ -32,3 +32,24 @@ Every net listed here should become a wire (or labeled net) in your schematic.
 | 3.3V      | VDD      | Pin 1           |
 | GND       | GND      | Pin 3           |
 | NRST      | Reset    | Pin 5 (optional)|
+
+## Power section
+
+| Signal | From | To | Notes |
+|--------|------|----|-------|
+| 5V | USB Micro-B VBUS | AMS1117-3.3 IN | |
+| 3.3V | AMS1117-3.3 OUT | STM32 VDD (x4 pins), BME280 VDD | Add 1uF cap on output |
+| GND | USB Micro-B GND | Common ground plane | |
+
+## Boot configuration
+
+| STM32 Pin | Connection | Notes |
+|-----------|-----------|-------|
+| BOOT0 | 10k pull-down to GND, optional button to 3.3V | Low = boot from flash (normal). High = boot from system bootloader (DFU) |
+| NRST | 10k pull-up to 3.3V, tactile switch to GND | Standard reset circuit |
+
+## Decoupling (don't skip these — the MCU will misbehave without them)
+
+- One 100nF ceramic cap on **each** of the STM32's VDD pins (it has several — check the datasheet pinout), placed as close to the pin as possible.
+- One 100nF ceramic cap on BME280 VDD.
+- 18-22pF load caps on both legs of the 8MHz crystal (Y1) to GND.
