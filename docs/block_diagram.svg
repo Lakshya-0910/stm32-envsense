@@ -1,0 +1,54 @@
+<svg viewBox="0 0 820 300" xmlns="http://www.w3.org/2000/svg" font-family="Helvetica, Arial, sans-serif">
+  <style>
+    .box { fill: #f4f6f8; stroke: #2a3f5f; stroke-width: 2; rx: 8; }
+    .label { font-size: 15px; fill: #16324f; font-weight: 600; text-anchor: middle; }
+    .sub { font-size: 11px; fill: #5a6b7d; text-anchor: middle; }
+    .arrow { stroke: #2a3f5f; stroke-width: 2; fill: none; marker-end: url(#arrowhead); }
+    .netlabel { font-size: 11px; fill: #7a8794; text-anchor: middle; }
+  </style>
+  <defs>
+    <marker id="arrowhead" markerWidth="8" markerHeight="8" refX="6" refY="3" orient="auto">
+      <path d="M0,0 L6,3 L0,6 Z" fill="#2a3f5f"/>
+    </marker>
+  </defs>
+
+  <!-- USB -->
+  <rect class="box" x="20" y="120" width="110" height="60"/>
+  <text class="label" x="75" y="145">USB 5V</text>
+  <text class="sub" x="75" y="160">power in</text>
+
+  <!-- LDO -->
+  <rect class="box" x="170" y="120" width="120" height="60"/>
+  <text class="label" x="230" y="145">AMS1117</text>
+  <text class="sub" x="230" y="160">5V -&gt; 3.3V LDO</text>
+
+  <!-- STM32 -->
+  <rect class="box" x="340" y="90" width="160" height="120"/>
+  <text class="label" x="420" y="130">STM32F103C8T6</text>
+  <text class="sub" x="420" y="148">Cortex-M3 @ 72MHz</text>
+  <text class="sub" x="420" y="163">bare-metal C firmware</text>
+  <text class="sub" x="420" y="178">I2C1 + USART1 (polled)</text>
+
+  <!-- BME280 -->
+  <rect class="box" x="560" y="30" width="140" height="60"/>
+  <text class="label" x="630" y="55">BME280</text>
+  <text class="sub" x="630" y="70">temp / humidity / pressure</text>
+
+  <!-- PC -->
+  <rect class="box" x="560" y="150" width="140" height="60"/>
+  <text class="label" x="630" y="175">Host PC</text>
+  <text class="sub" x="630" y="190">serial_logger.py -&gt; CSV -&gt; plot</text>
+
+  <!-- arrows -->
+  <path class="arrow" d="M130,150 L170,150"/>
+  <path class="arrow" d="M290,150 L340,150"/>
+  <path class="arrow" d="M500,130 C530,110 530,80 560,65"/>
+  <text class="netlabel" x="525" y="95">I2C1 (PB6/PB7)</text>
+
+  <path class="arrow" d="M500,175 C530,190 530,190 560,182"/>
+  <text class="netlabel" x="525" y="205">USART1 115200 8N1</text>
+
+  <text x="420" y="260" text-anchor="middle" font-size="12" fill="#7a8794">
+    EnvSense: STM32 + BME280 sensor board — reads temp/humidity/pressure every 1s, streams CSV over serial
+  </text>
+</svg>
